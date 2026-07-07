@@ -1,0 +1,58 @@
+name: Build Windows (manual)
+
+# Manually build a Windows installer + portable exe from this fork.
+# How to use:
+#   Actions tab -> "Build Windows (manual)" -> Run workflow -> pick a branch
+#   (default: master) -> Run. When it finishes (~10-15 min), open the run and
+#   download the "pear-desktop-windows" artifact. Inside, run the portable
+#   "Pear-Desktop-<version>.exe" (no install needed, keeps your existing settings).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or commit SHA to build'
+        required: false
+        default: 'master'
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24.x'
+
+jobs:
+  build-windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        with:
+          version: 11
+          run_install: false
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Windows (installer + portable)
+        run: pnpm dist:win
+
+      - name: Upload build
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: pear-desktop-windows
+          path: pack/
+          retention-days: 14
+          if-no-files-found: error
