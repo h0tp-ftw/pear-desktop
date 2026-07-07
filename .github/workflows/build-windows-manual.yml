@@ -1,11 +1,13 @@
 name: Build Windows (manual)
 
-# Manually build a Windows installer + portable exe from this fork.
+# Manually build a Windows x64 installer + portable exe from this fork.
 # How to use:
 #   Actions tab -> "Build Windows (manual)" -> Run workflow -> pick a branch
 #   (default: master) -> Run. When it finishes (~10-15 min), open the run and
-#   download the "pear-desktop-windows" artifact. Inside, run the portable
-#   "Pear-Desktop-<version>.exe" (no install needed, keeps your existing settings).
+#   download the "pear-desktop-windows" artifact. It contains:
+#     - "YouTube Music Setup <version>.exe" -> offline installer (Start menu + uninstall)
+#     - "YouTube Music <version>.exe"        -> portable, run directly, no install
+#   Both reuse your existing settings (same app id).
 
 on:
   workflow_dispatch:
@@ -46,13 +48,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Windows (installer + portable)
-        run: pnpm dist:win
+      # Offline NSIS installer + portable, x64 only. Overrides the config's
+      # nsis-web/ia32/arm64 win targets to keep the build small and fast.
+      - name: Build Windows (installer + portable, x64)
+        run: |
+          pnpm clean
+          pnpm build
+          pnpm electron-builder --win nsis portable --x64 -p never
 
       - name: Upload build
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
           name: pear-desktop-windows
-          path: pack/
+          path: pack/*.exe
           retention-days: 14
           if-no-files-found: error
